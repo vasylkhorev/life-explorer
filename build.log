@@ -1,0 +1,174 @@
+﻿cargo :     Checking halflife
+-explorer v0.1.0 (C:\Users\kh
+orev\PycharmProjects\test\hal
+flife-explorer)
+At line:1 char:1
++ cargo check 2>&1 | Out-File
+ -Encoding utf8 build.log
++ ~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (    Che  
+  cking ha...flife-explore   
+ r):String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+error[E0252]: the name `analy
+ze_pattern` is defined multip
+le times
+  --> src\extractor.rs:16:23
+   |
+12 | use crate::analysis::{an
+alyze_pattern, PatternResult}
+;
+   |                       --
+------------- previous import
+ of the value `analyze_patter
+n` here
+...
+16 | use crate::analysis::{an
+alyze_pattern, PatternResult}
+;
+   |                       ^^
+^^^^^^^^^^^^^--
+   |                       |
+   |                       `a
+nalyze_pattern` reimported he
+re
+   |                       he
+lp: remove unnecessary import
+   |
+   = note: `analyze_pattern` 
+must be defined only once in 
+the value namespace of this m
+odule
+
+error[E0252]: the name `HalfL
+ifeRule` is defined multiple 
+times
+  --> src\extractor.rs:14:5
+   |
+10 | use crate::rule::HalfLif
+eRule;
+   |     --------------------
+----- previous import of the 
+type `HalfLifeRule` here
+...
+14 | use crate::rule::HalfLif
+eRule;
+   |     ^^^^^^^^^^^^^^^^^^^^
+^^^^^ `HalfLifeRule` reimport
+ed here
+   |
+   = note: `HalfLifeRule` mus
+t be defined only once in the
+ type namespace of this modul
+e
+
+error[E0252]: the name `Grid2
+D` is defined multiple times
+  --> src\extractor.rs:15:5
+   |
+11 | use crate::grid::Grid2D;
+   |     ------------------- 
+previous import of the type `
+Grid2D` here
+...
+15 | use crate::grid::Grid2D;
+   |     ^^^^^^^^^^^^^^^^^^^ 
+`Grid2D` reimported here
+   |
+   = note: `Grid2D` must be d
+efined only once in the type 
+namespace of this module
+
+error[E0252]: the name `Patte
+rnResult` is defined multiple
+ times
+  --> src\extractor.rs:16:40
+   |
+12 | use crate::analysis::{an
+alyze_pattern, PatternResult}
+;
+   |                         
+               ------------- 
+previous import of the type `
+PatternResult` here
+...
+16 | use crate::analysis::{an
+alyze_pattern, PatternResult}
+;
+   |                         
+               ^^^^^^^^^^^^^ 
+`PatternResult` reimported he
+re
+   |
+   = note: `PatternResult` mu
+st be defined only once in th
+e type namespace of this modu
+le
+
+warning: unused import: `serd
+e::Serialize`
+ --> src\extractor.rs:7:5
+  |
+7 | use serde::Serialize;
+  |     ^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_impo
+rts)]` (part of `#[warn(unuse
+d)]`) on by default
+
+warning: unused import: `crat
+e::rule::HalfLifeRule`
+  --> src\extractor.rs:14:5
+   |
+14 | use crate::rule::HalfLif
+eRule;
+   |     ^^^^^^^^^^^^^^^^^^^^
+^^^^^
+
+warning: unused import: `crat
+e::grid::Grid2D`
+  --> src\extractor.rs:15:5
+   |
+15 | use crate::grid::Grid2D;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Pat
+ternResult` and `analyze_patt
+ern`
+  --> src\extractor.rs:16:23
+   |
+16 | use crate::analysis::{an
+alyze_pattern, PatternResult}
+;
+   |                       ^^
+^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused variable: `ch
+ar_val`
+   --> src\grid.rs:134:21
+    |
+134 |                 let cha
+r_val = match val {
+    |                     ^^^
+^^^^^ help: if this is intent
+ional, prefix it with an unde
+rscore: `_char_val`
+    |
+    = note: `#[warn(unused_va
+riables)]` (part of `#[warn(u
+nused)]`) on by default
+
+For more information about th
+is error, try `rustc --explai
+n E0252`.
+warning: `halflife-explorer` 
+(bin "halflife-explorer") gen
+erated 5 warnings
+error: could not compile `hal
+flife-explorer` (bin "halflif
+e-explorer") due to 4 previou
+s errors; 5 warnings emitted
