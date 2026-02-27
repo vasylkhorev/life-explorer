@@ -3,6 +3,8 @@ use rayon::prelude::*;
 use rand::Rng;
 use indicatif::ParallelProgressIterator;
 use indicatif::ProgressBar;
+use std::io::Write;
+use std::sync::atomic::AtomicUsize;
 
 use crate::rule::HalfLifeRule;
 use crate::grid::Grid2D;
@@ -23,10 +25,19 @@ pub fn explore_2d(rules: Vec<HalfLifeRule>, num_patterns: usize, _threads: usize
     println!("Exploring {} rules with {} patterns each.", total_rules, num_patterns);
 
     let pb = ProgressBar::new(total_rules as u64);
+    let is_tty = console::user_attended();
+    let counter = std::sync::atomic::AtomicUsize::new(0);
 
     let mut results: Vec<RuleStats> = rules.into_par_iter()
         .progress_with(pb)
         .map(|rule| {
+            let current = counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+            
+            if !is_tty && (current == 1 || current % 50 == 0 || current == total_rules) {
+                println!("Progress: {}/{} rules processed...", current, total_rules);
+                let _ = std::io::stdout().flush();
+            }
+
             let mut stats = RuleStats {
                 rule,
                 dead: 0,
