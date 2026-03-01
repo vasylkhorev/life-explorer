@@ -26,33 +26,36 @@ pub fn analyze_pattern(
     rule: &HalfLifeRule,
     max_steps: usize,
 ) -> PatternResult {
-    let mut grid = base_grid.clone();
+    let mut grid1 = base_grid.clone();
+    let mut grid2 = Grid2D::new(grid1.width, grid1.height);
     let mut history: VecDeque<Vec<u8>> = VecDeque::with_capacity(60);
 
     // Warmup
     for _ in 0..30 {
-        grid = rule.step(&grid);
-        if grid.is_empty() {
+        rule.step_in_place(&grid1, &mut grid2);
+        std::mem::swap(&mut grid1, &mut grid2);
+        if grid1.is_empty() {
             return PatternResult::Dead;
         }
-        if grid.alive_count() > 400 {
+        if grid1.alive_count() > 400 {
             return PatternResult::Explode;
         }
     }
 
     for _ in 0..max_steps {
-        grid = rule.step(&grid);
+        rule.step_in_place(&grid1, &mut grid2);
+        std::mem::swap(&mut grid1, &mut grid2);
 
-        if grid.is_empty() {
+        if grid1.is_empty() {
             return PatternResult::Dead;
         }
         
-        if grid.alive_count() > 400 {
+        if grid1.alive_count() > 400 {
             return PatternResult::Explode;
         }
 
-        if grid.hit_edge() {
-            let components = get_components(&grid);
+        if grid1.hit_edge() {
+            let components = get_components(&grid1);
             for comp in components {
                 if comp.size > 50 {
                     continue; // Too big to be a nice glider, probably explosion
@@ -65,7 +68,7 @@ pub fn analyze_pattern(
             return PatternResult::Explode;
         }
 
-        let crop = match get_crop(&grid) {
+        let crop = match get_crop(&grid1) {
             Some(c) => c,
             None => continue,
         };
@@ -84,11 +87,13 @@ pub fn analyze_pattern(
             let period = history.len() - found_idx as usize;
             
             // Re-simulate to capture ALL phases
-            let mut grid_stable = grid.clone();
+            let mut grid_stable = grid1.clone();
+            let mut grid_stable_next = Grid2D::new(grid_stable.width, grid_stable.height);
             let mut phases = vec![crop.clone()];
             
             for _ in 0..(period - 1) {
-                grid_stable = rule.step(&grid_stable);
+                rule.step_in_place(&grid_stable, &mut grid_stable_next);
+                std::mem::swap(&mut grid_stable, &mut grid_stable_next);
                 if let Some(ph_crop) = get_crop(&grid_stable) {
                     phases.push(ph_crop);
                 }

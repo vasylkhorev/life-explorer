@@ -16,9 +16,9 @@ pub fn write_2d_results_csv(results: &[RuleStats], filepath: &str) -> Result<(),
     ])?;
     
     for r in results {
-        let os_total: usize = r.oscillators.values().map(|s| s.len()).sum();
+        let os_total = r.oscillators_count;
         
-        let get_p = |p: usize| r.oscillators.get(&p).map(|s| s.len()).unwrap_or(0).to_string();
+        let get_p = |p: usize| r.oscillators_by_period.get(&p).cloned().unwrap_or(0).to_string();
         
         wtr.write_record(&[
             r.rule.to_string(),
@@ -29,7 +29,7 @@ pub fn write_2d_results_csv(results: &[RuleStats], filepath: &str) -> Result<(),
             r.dead.to_string(),
             r.explode.to_string(),
             r.chaos.to_string(),
-            r.gliders.len().to_string(),
+            r.gliders_count.to_string(),
             os_total.to_string(),
             get_p(1), get_p(2), get_p(3), get_p(4), get_p(5),
             get_p(6), get_p(7), get_p(8), get_p(9), get_p(10),
@@ -78,71 +78,72 @@ pub fn generate_html_table(csv_filepath: &str, html_filepath: &str) -> Result<()
     let mut rdr = csv::Reader::from_path(csv_filepath)?;
     let headers = rdr.headers()?.clone();
     
-    let mut html = String::from("<!DOCTYPE html>
-<html lang=\"sk\">
-<head>
-    <meta charset=\"UTF-8\">
-    <title>Výsledky prieskumu pravidiel</title>
-    <script src=\"https://code.jquery.com/jquery-3.7.0.min.js\"></script>
-    <link rel=\"stylesheet\" href=\"https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css\">
-    <script src=\"https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js\"></script>
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: #e2e8f0; padding: 20px; }
-        .container { max-width: 1400px; margin: 0 auto; background-color: #1e293b; padding: 30px; border-radius: 12px; }
-        h1 { color: #38bdf8; }
-        table.dataTable { color: #e2e8f0; }
-        table.dataTable thead th { border-bottom: 2px solid #334155; color: #38bdf8; }
-        table.dataTable tbody tr { background-color: transparent !important; }
-        table.dataTable tbody tr:hover { background-color: #334155 !important; }
-        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate { color: #94a3b8 !important; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button { color: #e2e8f0 !important; }
-        .dataTables_wrapper .dataTables_paginate .paginate_button.current { background: #38bdf8 !important; color: #0f172a !important; }
-    </style>
-</head>
-<body>
-    <div class=\"container\">
-        <h1>Výsledky prieskumu (Half-Life Rust)</h1>
-        <table id=\"rulesTable\" class=\"display\" style=\"width:100%\">
-            <thead>
-                <tr>\n");
+    let file = File::create(html_filepath)?;
+    let mut w = std::io::BufWriter::new(file);
+
+    writeln!(w, "<!DOCTYPE html>")?;
+    writeln!(w, "<html lang=\"sk\">")?;
+    writeln!(w, "<head>")?;
+    writeln!(w, "    <meta charset=\"UTF-8\">")?;
+    writeln!(w, "    <title>Výsledky prieskumu pravidiel</title>")?;
+    writeln!(w, "    <script src=\"https://code.jquery.com/jquery-3.7.0.min.js\"></script>")?;
+    writeln!(w, "    <link rel=\"stylesheet\" href=\"https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css\">")?;
+    writeln!(w, "    <script src=\"https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js\"></script>")?;
+    writeln!(w, "    <style>")?;
+    writeln!(w, "        body {{ font-family: 'Segoe UI', sans-serif; background-color: #0f172a; color: #e2e8f0; padding: 20px; }}")?;
+    writeln!(w, "        .container {{ max-width: 1400px; margin: 0 auto; background-color: #1e293b; padding: 30px; border-radius: 12px; }}")?;
+    writeln!(w, "        h1 {{ color: #38bdf8; }}")?;
+    writeln!(w, "        table.dataTable {{ color: #e2e8f0; }}")?;
+    writeln!(w, "        table.dataTable thead th {{ border-bottom: 2px solid #334155; color: #38bdf8; }}")?;
+    writeln!(w, "        table.dataTable tbody tr {{ background-color: transparent !important; }}")?;
+    writeln!(w, "        table.dataTable tbody tr:hover {{ background-color: #334155 !important; }}")?;
+    writeln!(w, "        .dataTables_wrapper .dataTables_length, .dataTables_wrapper .dataTables_filter, .dataTables_wrapper .dataTables_info, .dataTables_wrapper .dataTables_paginate {{ color: #94a3b8 !important; }}")?;
+    writeln!(w, "        .dataTables_wrapper .dataTables_paginate .paginate_button {{ color: #e2e8f0 !important; }}")?;
+    writeln!(w, "        .dataTables_wrapper .dataTables_paginate .paginate_button.current {{ background: #38bdf8 !important; color: #0f172a !important; }}")?;
+    writeln!(w, "    </style>")?;
+    writeln!(w, "</head>")?;
+    writeln!(w, "<body>")?;
+    writeln!(w, "    <div class=\"container\">")?;
+    writeln!(w, "        <h1>Výsledky prieskumu (Half-Life Rust)</h1>")?;
+    writeln!(w, "        <table id=\"rulesTable\" class=\"display\" style=\"width:100%\">")?;
+    writeln!(w, "            <thead>")?;
+    writeln!(w, "                <tr>")?;
 
     for h in headers.iter() {
-        html.push_str(&format!("                    <th>{}</th>\n", h.replace('_', " ")));
+        writeln!(w, "                    <th>{}</th>", h.replace('_', " "))?;
     }
-    html.push_str("                </tr>\n            </thead>\n            <tbody>\n");
+    writeln!(w, "                </tr>\n            </thead>\n            <tbody>")?;
 
     for result in rdr.records() {
         let record = result?;
-        html.push_str("                <tr>\n");
+        writeln!(w, "                <tr>")?;
         for (i, val) in record.iter().enumerate() {
             let col_name = headers.get(i).unwrap_or("");
             if (col_name == "Unique_Gliders" || col_name == "Spaceship") && val.parse::<i32>().unwrap_or(0) > 0 {
-                html.push_str(&format!("                    <td style=\"color: #4ade80; font-weight: bold;\">{}</td>\n", val));
+                writeln!(w, "                    <td style=\"color: #4ade80; font-weight: bold;\">{}</td>", val)?;
             } else if (col_name == "Exploded" || col_name == "Expand") && val.parse::<i32>().unwrap_or(0) > 900 {
-                html.push_str(&format!("                    <td style=\"color: #f87171;\">{}</td>\n", val));
+                writeln!(w, "                    <td style=\"color: #f87171;\">{}</td>", val)?;
             } else {
-                html.push_str(&format!("                    <td>{}</td>\n", val));
+                writeln!(w, "                    <td>{}</td>", val)?;
             }
         }
-        html.push_str("                </tr>\n");
+        writeln!(w, "                </tr>")?;
     }
 
-    html.push_str("            </tbody>
-        </table>
-    </div>
-    <script>
-        $(document).ready(function() {
-            $('#rulesTable').DataTable({
-                \"order\": [[ 8, \"desc\" ], [ 9, \"desc\" ]],
-                \"pageLength\": 50
-            });
-        });
-    </script>
-</body>
-</html>");
+    writeln!(w, "            </tbody>")?;
+    writeln!(w, "        </table>")?;
+    writeln!(w, "    </div>")?;
+    writeln!(w, "    <script>")?;
+    writeln!(w, "        $(document).ready(function() {{")?;
+    writeln!(w, "            $('#rulesTable').DataTable({{")?;
+    writeln!(w, "                \"order\": [[ 8, \"desc\" ], [ 9, \"desc\" ]],")?;
+    writeln!(w, "                \"pageLength\": 50")?;
+    writeln!(w, "            }});")?;
+    writeln!(w, "        }});")?;
+    writeln!(w, "    </script>")?;
+    writeln!(w, "</body>")?;
+    writeln!(w, "</html>")?;
 
-    let mut file = File::create(html_filepath)?;
-    file.write_all(html.as_bytes())?;
-    
+    w.flush()?;
     Ok(())
 }

@@ -12,30 +12,48 @@ pub fn verify_glider(
         return None;
     }
 
-    let mut grid = Grid2D::new(universe_size, universe_size);
+    let mut grid1 = Grid2D::new(universe_size, universe_size);
+    let mut grid2 = Grid2D::new(universe_size, universe_size);
     let sy = (universe_size - crop.height) / 2;
     let sx = (universe_size - crop.width) / 2;
 
     for y in 0..crop.height {
         for x in 0..crop.width {
-            grid.set(sx + x, sy + y, crop.get(x, y));
+            grid1.set(sx + x, sy + y, crop.get(x, y));
         }
     }
 
-    let (initial_y, initial_x) = match get_center_of_mass(&grid) {
+    let (initial_y, initial_x) = match get_center_of_mass(&grid1) {
         Some(pos) => pos,
         None => return None,
     };
 
-    for _ in 1..max_steps {
-        grid = rule.step(&grid);
+    let mut history: Vec<Vec<i8>> = vec![vec![0; universe_size * universe_size]; 60];
+    let mut history_len = 0;
+    let mut history_idx = 0;
 
-        if grid.is_empty() {
+    for _ in 1..max_steps {
+        rule.step_in_place(&grid1, &mut grid2);
+        std::mem::swap(&mut grid1, &mut grid2);
+
+        if grid1.is_empty() {
             return None;
         }
 
-        if grid.hit_edge() {
-            let (final_y, final_x) = match get_center_of_mass(&grid) {
+        for i in 0..history_len {
+            if history[i] == grid1.data {
+                return None;
+            }
+        }
+
+        history[history_idx].copy_from_slice(&grid1.data);
+        history_idx = (history_idx + 1) % 60;
+        if history_len < 60 {
+            history_len += 1;
+        }
+
+        if grid1.hit_edge() {
+            let (final_y, final_x) = match get_center_of_mass(&grid1) {
                 Some(pos) => pos,
                 None => return None,
             };
@@ -45,7 +63,7 @@ pub fn verify_glider(
             let dist_sq = dy * dy + dx * dx;
 
             if dist_sq > 4.0 {
-                let comps = get_components(&grid);
+                let comps = get_components(&grid1);
                 let main_comps: Vec<_> = comps.into_iter().filter(|c| c.size > 2).collect();
 
                 if main_comps.len() == 1 {

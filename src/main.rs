@@ -10,6 +10,7 @@ pub mod output;
 
 use clap::{Parser, Subcommand};
 use crate::rule::HalfLifeRule;
+use std::io::Write;
 
 #[derive(Parser)]
 #[command(name = "halflife-explorer")]
@@ -27,7 +28,7 @@ enum Commands {
     /// Run the 2D rule explorer
     Explore2d {
         /// Number of patterns to test per rule
-        #[arg(long, default_value_t = 1000)]
+        #[arg(long, default_value_t = 3000)]
         patterns: usize,
         
         /// Rule type: 'comprehensive' or 'even'
@@ -147,12 +148,18 @@ fn main() {
                 }
             }
             
+            
+            println!("Post-processing: Sorting results...");
+            let _ = std::io::stdout().flush();
             let stats = explorer_2d::explore_2d(rules, patterns, cli.threads);
+            
+            println!("Post-processing: Writing CSV and HTML output...");
+            let _ = std::io::stdout().flush();
             output::write_2d_results_csv(&stats, &out).unwrap();
             
             let html_out = out.replace(".csv", ".html");
             output::generate_html_table(&out, &html_out).unwrap();
-            println!("Results saved to {} and {}", out, html_out);
+            println!("Done! Results saved to {} and {}", out, html_out);
         },
         
         Commands::Explore1d { patterns, out } => {

@@ -14,27 +14,45 @@ impl HalfLifeRule {
         Self { b_min, b_max, s_min, s_max }
     }
 
-    /// Executed exactly one step of Half-Life using true sums (0-16) and 3-states.
     pub fn step(&self, grid: &Grid2D) -> Grid2D {
         let mut next_grid = Grid2D::new(grid.width, grid.height);
+        self.step_in_place(grid, &mut next_grid);
+        next_grid
+    }
+
+    pub fn step_in_place(&self, grid: &Grid2D, next_grid: &mut Grid2D) {
+        let w = grid.width as isize;
+        let h = grid.height as isize;
         
-        // Compute neighbor sums (8-connected, wrapping/circular padding)
         for y in 0..grid.height {
+            let ry = y as isize;
             for x in 0..grid.width {
                 let current_val = grid.get(x, y);
                 let mut sum: i32 = 0;
                 
-                // Optimized 8-neighbor sum with wrapping
+                let rx = x as isize;
                 for dy in [-1, 0, 1] {
                     for dx in [-1, 0, 1] {
                         if dx == 0 && dy == 0 {
                             continue;
                         }
                         
-                        let nx = (x as isize + dx).rem_euclid(grid.width as isize) as usize;
-                        let ny = (y as isize + dy).rem_euclid(grid.height as isize) as usize;
+                        let mut nx = rx + dx;
+                        let mut ny = ry + dy;
                         
-                        sum += grid.get(nx, ny) as i32;
+                        if nx < 0 {
+                            nx = w - 1;
+                        } else if nx >= w {
+                            nx = 0;
+                        }
+                        
+                        if ny < 0 {
+                            ny = h - 1;
+                        } else if ny >= h {
+                            ny = 0;
+                        }
+                        
+                        sum += grid.get(nx as usize, ny as usize) as i32;
                     }
                 }
                 
@@ -43,7 +61,6 @@ impl HalfLifeRule {
                 
                 let target = if is_birth || is_survive { 2 } else { 0 };
                 
-                // diff = sign(target - current)
                 let diff = if target > current_val {
                     1
                 } else if target < current_val {
@@ -55,8 +72,6 @@ impl HalfLifeRule {
                 next_grid.set(x, y, current_val + diff);
             }
         }
-        
-        next_grid
     }
 }
 
