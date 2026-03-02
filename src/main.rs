@@ -26,13 +26,14 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Run the 2D rule explorer
+    #[command(name = "explore-2d")]
     Explore2d {
         /// Number of patterns to test per rule
         #[arg(long, default_value_t = 3000)]
         patterns: usize,
         
-        /// Rule type: 'comprehensive' or 'even'
-        #[arg(long, default_value = "comprehensive")]
+        /// Rule type: 'all', 'comprehensive', 'even', or 'even-split'
+        #[arg(long, default_value = "all")]
         mode: String,
         
         /// Output CSV file
@@ -41,6 +42,7 @@ enum Commands {
     },
     
     /// Run the 1D weighted rule explorer
+    #[command(name = "explore-1d")]
     Explore1d {
         /// Number of patterns to test per rule
         #[arg(long, default_value_t = 500)]
@@ -67,6 +69,7 @@ enum Commands {
     },
     
     /// Convert CSV output to an interactive HTML table
+    #[command(name = "csv-to-html")]
     CsvToHtml {
         #[arg(long)]
         csv: String,
@@ -139,6 +142,7 @@ fn main() {
                                 let s1_max = evens[j];
                                 rules.push(HalfLifeRule::new(b_min, b_max, s1_min, s1_max));
                                 
+                                // Second interval must start after first interval ends
                                 for k in (j+2)..evens.len() {
                                     for l in k..evens.len() {
                                         let s2_min = evens[k];
@@ -186,9 +190,11 @@ fn main() {
             }
             
             
+            let stats = explorer_2d::explore_2d(rules, patterns, cli.threads);
+            
             println!("Post-processing: Sorting results...");
             let _ = std::io::stdout().flush();
-            let stats = explorer_2d::explore_2d(rules, patterns, cli.threads);
+            // Results are already sorted in explore_2d
             
             println!("Post-processing: Writing CSV and HTML output...");
             let _ = std::io::stdout().flush();
