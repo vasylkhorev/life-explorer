@@ -7,11 +7,25 @@ pub struct HalfLifeRule {
     pub b_max: i32,
     pub s_min: i32,
     pub s_max: i32,
+    pub s2_min: Option<i32>,
+    pub s2_max: Option<i32>,
 }
 
 impl HalfLifeRule {
     pub fn new(b_min: i32, b_max: i32, s_min: i32, s_max: i32) -> Self {
-        Self { b_min, b_max, s_min, s_max }
+        Self { b_min, b_max, s_min, s_max, s2_min: None, s2_max: None }
+    }
+
+    pub fn new_with_s2(b_min: i32, b_max: i32, s_min: i32, s_max: i32, s2_min: i32, s2_max: i32) -> Self {
+        Self { b_min, b_max, s_min, s_max, s2_min: Some(s2_min), s2_max: Some(s2_max) }
+    }
+
+    pub fn format_val(v: i32) -> String {
+        if v % 2 == 0 {
+            format!("{}", v / 2)
+        } else {
+            format!("{}.5", v / 2)
+        }
     }
 
     pub fn step(&self, grid: &Grid2D) -> Grid2D {
@@ -57,7 +71,15 @@ impl HalfLifeRule {
                 }
                 
                 let is_birth = current_val == 0 && sum >= self.b_min && sum <= self.b_max;
-                let is_survive = current_val >= 1 && sum >= self.s_min && sum <= self.s_max;
+                let mut is_survive = current_val >= 1 && sum >= self.s_min && sum <= self.s_max;
+                
+                if !is_survive && current_val >= 1 {
+                    if let (Some(min2), Some(max2)) = (self.s2_min, self.s2_max) {
+                        if sum >= min2 && sum <= max2 {
+                            is_survive = true;
+                        }
+                    }
+                }
                 
                 let target = if is_birth || is_survive { 2 } else { 0 };
                 
@@ -78,15 +100,25 @@ impl HalfLifeRule {
 impl fmt::Display for HalfLifeRule {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let b = if self.b_min == self.b_max {
-            format!("B{}", self.b_min)
+            format!("B{}", Self::format_val(self.b_min))
         } else {
-            format!("B{}-{}", self.b_min, self.b_max)
+            format!("B{}-{}", Self::format_val(self.b_min), Self::format_val(self.b_max))
+        };
+        
+        let s2_str = if let (Some(min2), Some(max2)) = (self.s2_min, self.s2_max) {
+            if min2 == max2 {
+                format!(",{}", Self::format_val(min2))
+            } else {
+                format!(",{}-{}", Self::format_val(min2), Self::format_val(max2))
+            }
+        } else {
+            "".to_string()
         };
         
         let s = if self.s_min == self.s_max {
-            format!("S{}", self.s_min)
+            format!("S{}{}", Self::format_val(self.s_min), s2_str)
         } else {
-            format!("S{}-{}", self.s_min, self.s_max)
+            format!("S{}-{}{}", Self::format_val(self.s_min), Self::format_val(self.s_max), s2_str)
         };
         
         write!(f, "{}/{}", b, s)

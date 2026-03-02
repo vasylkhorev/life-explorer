@@ -82,6 +82,10 @@ fn parse_rule_str(mut s: &str) -> HalfLifeRule {
         s = &s[1..];
     }
     
+    let parse_val = |v: &str| -> i32 {
+        (v.parse::<f32>().unwrap() * 2.0).round() as i32
+    };
+    
     let parts: Vec<&str> = s.split("/S").collect();
     if parts.len() != 2 {
         panic!("Invalid rule format. Use Bmin-max/Smin-max");
@@ -89,19 +93,30 @@ fn parse_rule_str(mut s: &str) -> HalfLifeRule {
     
     let b_parts: Vec<&str> = parts[0].split('-').collect();
     let (b_min, b_max) = if b_parts.len() == 2 {
-        (b_parts[0].parse().unwrap(), b_parts[1].parse().unwrap())
+        (parse_val(b_parts[0]), parse_val(b_parts[1]))
     } else {
-        (b_parts[0].parse().unwrap(), b_parts[0].parse().unwrap())
+        (parse_val(b_parts[0]), parse_val(b_parts[0]))
     };
     
-    let s_parts: Vec<&str> = parts[1].split('-').collect();
+    let s_parts_all: Vec<&str> = parts[1].split(',').collect();
+    let s_parts: Vec<&str> = s_parts_all[0].split('-').collect();
     let (s_min, s_max) = if s_parts.len() == 2 {
-        (s_parts[0].parse().unwrap(), s_parts[1].parse().unwrap())
+        (parse_val(s_parts[0]), parse_val(s_parts[1]))
     } else {
-        (s_parts[0].parse().unwrap(), s_parts[0].parse().unwrap())
+        (parse_val(s_parts[0]), parse_val(s_parts[0]))
     };
     
-    HalfLifeRule::new(b_min, b_max, s_min, s_max)
+    if s_parts_all.len() > 1 {
+        let s2_parts: Vec<&str> = s_parts_all[1].split('-').collect();
+        let (s2_min, s2_max) = if s2_parts.len() == 2 {
+            (parse_val(s2_parts[0]), parse_val(s2_parts[1]))
+        } else {
+            (parse_val(s2_parts[0]), parse_val(s2_parts[0]))
+        };
+        HalfLifeRule::new_with_s2(b_min, b_max, s_min, s_max, s2_min, s2_max)
+    } else {
+        HalfLifeRule::new(b_min, b_max, s_min, s_max)
+    }
 }
 
 fn main() {
@@ -113,7 +128,29 @@ fn main() {
         Commands::Explore2d { patterns, mode, out } => {
             let mut rules = Vec::new();
             
-            if mode == "even" {
+            if mode == "even-split" {
+                let evens = [0, 2, 4, 6, 8, 10, 12, 14, 16];
+                for &b_min in &evens {
+                    for &b_max in &evens {
+                        if b_min > b_max { continue; }
+                        for i in 0..evens.len() {
+                            for j in i..evens.len() {
+                                let s1_min = evens[i];
+                                let s1_max = evens[j];
+                                rules.push(HalfLifeRule::new(b_min, b_max, s1_min, s1_max));
+                                
+                                for k in (j+2)..evens.len() {
+                                    for l in k..evens.len() {
+                                        let s2_min = evens[k];
+                                        let s2_max = evens[l];
+                                        rules.push(HalfLifeRule::new_with_s2(b_min, b_max, s1_min, s1_max, s2_min, s2_max));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if mode == "even" {
                 let evens = [0, 2, 4, 6, 8, 10, 12, 14, 16];
                 for &b_min in &evens {
                     for &b_max in &evens {

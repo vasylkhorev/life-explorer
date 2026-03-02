@@ -11,7 +11,17 @@ use crate::grid::Grid2D;
 use crate::analysis::{analyze_pattern, PatternResult};
 
 fn format_rule_for_key(rule: &HalfLifeRule) -> String {
-    format!("b{}-{}_s{}-{},{}-{}", rule.b_min, rule.b_max, rule.s_min, rule.s_max, rule.b_min, rule.b_max)
+    let b_min = HalfLifeRule::format_val(rule.b_min);
+    let b_max = HalfLifeRule::format_val(rule.b_max);
+    let s_min = HalfLifeRule::format_val(rule.s_min);
+    let s_max = HalfLifeRule::format_val(rule.s_max);
+    
+    let mut s2_str = String::new();
+    if let (Some(s2_min), Some(s2_max)) = (rule.s2_min, rule.s2_max) {
+        s2_str = format!("_{}-{}", HalfLifeRule::format_val(s2_min), HalfLifeRule::format_val(s2_max));
+    }
+    
+    format!("b{}-{}_s{}-{}{}", b_min, b_max, s_min, s_max, s2_str)
 }
 
 pub fn extract_patterns(rule: HalfLifeRule, num_patterns: usize, output_dir: &str, _threads: usize) {

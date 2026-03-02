@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::Write;
 use crate::explorer_2d::RuleStats;
 use crate::explorer_1d::Rule1DStats;
+use crate::rule::HalfLifeRule;
 
 pub fn write_2d_results_csv(results: &[RuleStats], filepath: &str) -> Result<(), Box<dyn Error>> {
     let mut wtr = csv::Writer::from_path(filepath)?;
@@ -22,10 +23,10 @@ pub fn write_2d_results_csv(results: &[RuleStats], filepath: &str) -> Result<(),
         
         wtr.write_record(&[
             r.rule.to_string(),
-            r.rule.b_min.to_string(),
-            r.rule.b_max.to_string(),
-            r.rule.s_min.to_string(),
-            r.rule.s_max.to_string(),
+            HalfLifeRule::format_val(r.rule.b_min),
+            HalfLifeRule::format_val(r.rule.b_max),
+            HalfLifeRule::format_val(r.rule.s_min),
+            HalfLifeRule::format_val(r.rule.s_max),
             r.dead.to_string(),
             r.explode.to_string(),
             r.chaos.to_string(),
@@ -50,7 +51,12 @@ pub fn write_1d_results_csv(results: &[Rule1DStats], filepath: &str) -> Result<(
     
     for r in results {
         let weights_str = format!("{}_{}_{}", r.weights.0, r.weights.1, r.weights.2);
-        let rule_str = format!("B{}-{}/S{}-{}", r.b_min, r.b_max, r.s_min, r.s_max);
+        let rule_str = format!("B{}-{}/S{}-{}", 
+            HalfLifeRule::format_val(r.b_min), 
+            HalfLifeRule::format_val(r.b_max), 
+            HalfLifeRule::format_val(r.s_min), 
+            HalfLifeRule::format_val(r.s_max)
+        );
         
         wtr.write_record(&[
             weights_str,
@@ -58,10 +64,10 @@ pub fn write_1d_results_csv(results: &[Rule1DStats], filepath: &str) -> Result<(
             r.weights.0.to_string(),
             r.weights.1.to_string(),
             r.weights.2.to_string(),
-            r.b_min.to_string(),
-            r.b_max.to_string(),
-            r.s_min.to_string(),
-            r.s_max.to_string(),
+            HalfLifeRule::format_val(r.b_min),
+            HalfLifeRule::format_val(r.b_max),
+            HalfLifeRule::format_val(r.s_min),
+            HalfLifeRule::format_val(r.s_max),
             r.dead.to_string(),
             r.expand.to_string(),
             r.chaos.to_string(),
