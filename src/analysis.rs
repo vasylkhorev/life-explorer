@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use crate::grid::Grid2D;
 use crate::rule::HalfLifeRule;
 use crate::components::get_components;
-use crate::glider::{verify_glider, canonical_signature};
+use crate::glider::{verify_glider, canonical_orientation};
 
 #[derive(Debug, Clone)]
 pub enum PatternResult {
@@ -62,7 +62,8 @@ pub fn analyze_pattern(
                 }
                 
                 if let Some(g_crop) = verify_glider(&comp.crop, rule, 48, 400) {
-                    return PatternResult::Glider(g_crop.as_bytes().to_vec(), g_crop);
+                    let canon = canonical_orientation(&g_crop);
+                    return PatternResult::Glider(canon.as_bytes().to_vec(), canon);
                 }
             }
             return PatternResult::Explode;
@@ -99,18 +100,16 @@ pub fn analyze_pattern(
                 }
             }
             
-            // Choose the best phase (most cells active, prioritizing '2's)
+            // Choose the best phase (more full alive cells prioritized)
             phases.sort_by(|a, b| {
-                let score_a: i32 = a.data.iter().map(|&v| if v == 2 { 10 } else if v == 1 { 1 } else { 0 }).sum();
-                let score_b: i32 = b.data.iter().map(|&v| if v == 2 { 10 } else if v == 1 { 1 } else { 0 }).sum();
-                score_b.cmp(&score_a) // reverse order for best first
+                let score_a: f64 = a.data.iter().map(|&v| if v == 2 { 1.0 } else if v == 1 { 0.1 } else { 0.0 }).sum();
+                let score_b: f64 = b.data.iter().map(|&v| if v == 2 { 1.0 } else if v == 1 { 0.1 } else { 0.0 }).sum();
+                score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
             });
             
             let best_phase = phases[0].clone();
-            
-            if let Some(sig) = canonical_signature(&phases) {
-                return PatternResult::Oscillator { period, signature: sig, best_phase };
-            }
+            let canon = canonical_orientation(&best_phase);
+            return PatternResult::Oscillator { period, signature: canon.as_bytes().to_vec(), best_phase: canon };
         }
 
         if history.len() == 60 {

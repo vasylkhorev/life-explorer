@@ -86,6 +86,9 @@ fn parse_rule_str(mut s: &str) -> HalfLifeRule {
     }
     
     let parse_val = |v: &str| -> i32 {
+        if v.is_empty() {
+            panic!("Empty rule value");
+        }
         (v.parse::<f32>().unwrap() * 2.0).round() as i32
     };
     
@@ -110,7 +113,11 @@ fn parse_rule_str(mut s: &str) -> HalfLifeRule {
     };
     
     if s_parts_all.len() > 1 {
-        let s2_parts: Vec<&str> = s_parts_all[1].split('-').collect();
+        let mut s2_part = s_parts_all[1];
+        if s2_part.starts_with('S') {
+            s2_part = &s2_part[1..];
+        }
+        let s2_parts: Vec<&str> = s2_part.split('-').collect();
         let (s2_min, s2_max) = if s2_parts.len() == 2 {
             (parse_val(s2_parts[0]), parse_val(s2_parts[1]))
         } else {

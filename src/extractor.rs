@@ -1,6 +1,6 @@
 use std::collections::{HashSet, HashMap};
-use std::fs::File;
-use std::io::Write;
+use std::fs::OpenOptions;
+use std::io::{Write, BufWriter};
 use std::path::Path;
 use rayon::prelude::*;
 use rand::Rng;
@@ -95,9 +95,10 @@ pub fn extract_patterns(rule: HalfLifeRule, num_patterns: usize, output_dir: &st
     for (i, g) in gliders.iter().enumerate() {
         let name = format!("Glider {}", i + 1);
         let desc = format!("Stable glider found");
-        let rle = g.to_rle();
+        let rle_body = g.to_rle();
+        let full_rle = format!("x = {}, y = {}, rule = FuzzyLife/3\n{}", g.width, g.height, rle_body);
         output_str.push_str(&format!("    '{}': {{\n", name));
-        output_str.push_str(&format!("      rle: 'x = {}, y = {}, rule = FuzzyLife/3\\n{}',\n", g.width, g.height, rle));
+        output_str.push_str(&format!("      rle: '{}',\n", full_rle));
         output_str.push_str(&format!("      description: '{}',\n", desc));
         output_str.push_str("    },\n");
     }
@@ -114,9 +115,10 @@ pub fn extract_patterns(rule: HalfLifeRule, num_patterns: usize, output_dir: &st
             };
 
             let desc = format!("Period {} oscillator", p);
-            let rle = o.to_rle();
+            let rle_body = o.to_rle();
+            let full_rle = format!("x = {}, y = {}, rule = FuzzyLife/3\n{}", o.width, o.height, rle_body);
             output_str.push_str(&format!("    '{}': {{\n", name));
-            output_str.push_str(&format!("      rle: 'x = {}, y = {}, rule = FuzzyLife/3\\n{}',\n", o.width, o.height, rle));
+            output_str.push_str(&format!("      rle: '{}',\n", full_rle));
             output_str.push_str(&format!("      description: '{}',\n", desc));
             output_str.push_str("    },\n");
         }
@@ -125,8 +127,13 @@ pub fn extract_patterns(rule: HalfLifeRule, num_patterns: usize, output_dir: &st
     output_str.push_str("  },\n};\nexport default patterns;\n");
 
     let fpath = path.join(format!("{}_patterns.js", rule_key.replace(',', "_")));
-    let mut file = File::create(&fpath).unwrap();
-    file.write_all(output_str.as_bytes()).unwrap();
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .open(&fpath)
+        .unwrap();
+    let mut writer = BufWriter::new(file);
+    writer.write_all(output_str.as_bytes()).unwrap();
     
     println!("All patterns exported to RLE JS file at {}", fpath.display());
 }

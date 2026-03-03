@@ -20,6 +20,48 @@ impl HalfLifeRule {
         Self { b_min, b_max, s_min, s_max, s2_min: Some(s2_min), s2_max: Some(s2_max) }
     }
 
+    /// Convert from 0,0.5,1 scale to internal 0,1,2 scale
+    pub fn from_fuzzy_scale(b_min: f32, b_max: f32, s_min: f32, s_max: f32) -> Self {
+        Self {
+            b_min: (b_min * 2.0).round() as i32,
+            b_max: (b_max * 2.0).round() as i32,
+            s_min: (s_min * 2.0).round() as i32,
+            s_max: (s_max * 2.0).round() as i32,
+            s2_min: None,
+            s2_max: None,
+        }
+    }
+
+    /// Convert from 0,0.5,1 scale to internal 0,1,2 scale with second survival interval
+    pub fn from_fuzzy_scale_with_s2(b_min: f32, b_max: f32, s_min: f32, s_max: f32, s2_min: f32, s2_max: f32) -> Self {
+        Self {
+            b_min: (b_min * 2.0).round() as i32,
+            b_max: (b_max * 2.0).round() as i32,
+            s_min: (s_min * 2.0).round() as i32,
+            s_max: (s_max * 2.0).round() as i32,
+            s2_min: Some((s2_min * 2.0).round() as i32),
+            s2_max: Some((s2_max * 2.0).round() as i32),
+        }
+    }
+
+    /// Convert internal value to RLE character (0,1,2 -> b,A,B)
+    pub fn value_to_rle_char(val: i32) -> char {
+        match val {
+            2 => 'B',  // 1.0
+            1 => 'A',  // 0.5
+            _ => 'b'   // 0
+        }
+    }
+
+    /// Convert RLE character to internal value (b,A,B -> 0,1,2)
+    pub fn rle_char_to_value(ch: char) -> i32 {
+        match ch {
+            'B' => 2,  // 1.0
+            'A' => 1,  // 0.5
+            _ => 0     // b = 0
+        }
+    }
+
     pub fn format_val(v: i32) -> String {
         if v % 2 == 0 {
             format!("{}", v / 2)

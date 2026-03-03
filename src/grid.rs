@@ -1,3 +1,4 @@
+use crate::rule::HalfLifeRule;
 use std::fmt;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -132,11 +133,7 @@ impl Grid2D {
             for x in 0..self.width {
                 let val = self.get(x, y);
 
-                let char_actual = match val {
-                    2 => 'A',
-                    1 => 'B',
-                    _ => 'b'
-                };
+                let char_actual = HalfLifeRule::value_to_rle_char(val as i32);
 
                 if current_char == ' ' {
                     current_char = char_actual;

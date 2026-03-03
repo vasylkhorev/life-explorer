@@ -1,11 +1,11 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use rayon::prelude::*;
 use rand::Rng;
 use indicatif::ParallelProgressIterator;
 use indicatif::ProgressBar;
-use std::io::Write;
-use std::sync::{atomic::AtomicUsize, Mutex, Arc};
+use std::io::{Write, BufWriter};
 use std::fs::OpenOptions;
+use std::sync::{Mutex, Arc};
 
 use crate::rule::HalfLifeRule;
 use crate::grid::Grid2D;
@@ -31,13 +31,12 @@ pub fn explore_2d(rules: Vec<HalfLifeRule>, num_patterns: usize, _threads: usize
     let counter = std::sync::atomic::AtomicUsize::new(0);
     
     // Create a global file to continuously append discovered patterns
-    let patterns_file = Arc::new(Mutex::new(
-        OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open("discovered_patterns.jsonl")
-            .unwrap()
-    ));
+    let file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("discovered_patterns.jsonl")
+        .unwrap();
+    let patterns_file = Arc::new(Mutex::new(BufWriter::new(file)));
 
     let mut results: Vec<RuleStats> = rules.into_par_iter()
         .progress_with(pb)
@@ -55,15 +54,20 @@ pub fn explore_2d(rules: Vec<HalfLifeRule>, num_patterns: usize, _threads: usize
             let mut gliders = HashSet::new();
             let mut oscillators: HashMap<usize, HashSet<Vec<u8>>> = HashMap::new();
 
+            // Pre-allocate grids to reduce allocations
+            let gs = 48;
+            let _p_size = 12;
+            let mut grid_pool = Vec::with_capacity(num_patterns);
+            for _ in 0..num_patterns {
+                grid_pool.push(Grid2D::new(gs, gs));
+            }
+
             // We use a thread-local RNG
             let mut rng = rand::thread_rng();
 
-            for _ in 0..num_patterns {
-                let gs = 32;
+            for grid in &mut grid_pool {
                 let p_size = rng.gen_range(3..9);
                 let density = rng.gen_range(0.15..0.45);
-
-                let mut grid = Grid2D::new(gs, gs);
                 let sy = (gs - p_size) / 2;
                 let sx = (gs - p_size) / 2;
 
@@ -88,15 +92,20 @@ pub fn explore_2d(rules: Vec<HalfLifeRule>, num_patterns: usize, _threads: usize
                     PatternResult::Glider(sig, crop) => {
                         if gliders.insert(sig) {
                             let mut f = patterns_file.lock().unwrap();
-                            let json = format!(r#"{{"rule":"{}","type":"glider","period":0,"rle":{:?}}}"#, rule, crop.to_rle());
-                            writeln!(f, "{}", json).unwrap();
+                            let rle_body = crop.to_rle();
+                            let json = format!(r#"{{"rule":"{}","type":"glider","period":0,"rle":"x = {}, y = {}, rule = FuzzyLife/3\n{}"}}"#, rule, crop.width, crop.height, rle_body);
+                            f.write_all(json.as_bytes()).unwrap();
+                            f.write_all("\n".as_bytes()).unwrap();
                         }
                     },
                     PatternResult::Oscillator { period, signature, best_phase } => {
-                        if oscillators.entry(period).or_default().insert(signature) {
+                        let osc_set = oscillators.entry(period).or_default();
+                        if osc_set.insert(signature) {
                             let mut f = patterns_file.lock().unwrap();
-                            let json = format!(r#"{{"rule":"{}","type":"oscillator","period":{},"rle":{:?}}}"#, rule, period, best_phase.to_rle());
-                            writeln!(f, "{}", json).unwrap();
+                            let rle_body = best_phase.to_rle();
+                            let json = format!(r#"{{"rule":"{}","type":"oscillator","period":{},"rle":"x = {}, y = {}, rule = FuzzyLife/3\n{}"}}"#, rule, period, best_phase.width, best_phase.height, rle_body);
+                            f.write_all(json.as_bytes()).unwrap();
+                            f.write_all("\n".as_bytes()).unwrap();
                         }
                     }
                 }

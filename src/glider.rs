@@ -12,58 +12,42 @@ pub fn verify_glider(
         return None;
     }
 
-    let mut grid1 = Grid2D::new(universe_size, universe_size);
-    let mut grid2 = Grid2D::new(universe_size, universe_size);
+    let mut grid = Grid2D::new(universe_size, universe_size);
     let sy = (universe_size - crop.height) / 2;
     let sx = (universe_size - crop.width) / 2;
 
     for y in 0..crop.height {
         for x in 0..crop.width {
-            grid1.set(sx + x, sy + y, crop.get(x, y));
+            grid.set(sx + x, sy + y, crop.get(x, y));
         }
     }
 
-    let (initial_y, initial_x) = match get_center_of_mass(&grid1) {
+    let (initial_y, initial_x) = match get_center_of_mass(&grid) {
         Some(pos) => pos,
         None => return None,
     };
 
-    let mut history: Vec<Vec<i8>> = vec![vec![0; universe_size * universe_size]; 60];
-    let mut history_len = 0;
-    let mut history_idx = 0;
+    for _step in 1..max_steps {
+        let mut next_grid = Grid2D::new(universe_size, universe_size);
+        rule.step_in_place(&grid, &mut next_grid);
+        grid = next_grid;
 
-    for _ in 1..max_steps {
-        rule.step_in_place(&grid1, &mut grid2);
-        std::mem::swap(&mut grid1, &mut grid2);
-
-        if grid1.is_empty() {
+        if grid.is_empty() {
             return None;
         }
 
-        for i in 0..history_len {
-            if history[i] == grid1.data {
-                return None;
-            }
-        }
-
-        history[history_idx].copy_from_slice(&grid1.data);
-        history_idx = (history_idx + 1) % 60;
-        if history_len < 60 {
-            history_len += 1;
-        }
-
-        if grid1.hit_edge() {
-            let (final_y, final_x) = match get_center_of_mass(&grid1) {
+        if grid.hit_edge() {
+            let (final_y, final_x) = match get_center_of_mass(&grid) {
                 Some(pos) => pos,
                 None => return None,
             };
 
             let dy = final_y - initial_y;
             let dx = final_x - initial_x;
-            let dist_sq = dy * dy + dx * dx;
+            let dist = (dy * dy + dx * dx).sqrt();
 
-            if dist_sq > 4.0 {
-                let comps = get_components(&grid1);
+            if dist > 2.0 {
+                let comps = get_components(&grid);
                 let main_comps: Vec<_> = comps.into_iter().filter(|c| c.size > 2).collect();
 
                 if main_comps.len() == 1 {
@@ -187,25 +171,4 @@ pub fn canonical_orientation(grid: &Grid2D) -> Grid2D {
     variants[0].clone()
 }
 
-pub fn canonical_signature(phases: &[Grid2D]) -> Option<Vec<u8>> {
-    let mut valid_phases: Vec<&Grid2D> = phases.iter().filter(|p| !p.is_empty()).collect();
-    if valid_phases.is_empty() {
-        return None;
-    }
 
-    valid_phases.sort_by(|a, b| {
-        let a_area = a.width * a.height;
-        let b_area = b.width * b.height;
-        let area_cmp = a_area.cmp(&b_area);
-        if area_cmp != std::cmp::Ordering::Equal {
-            return area_cmp;
-        }
-
-        let a_sum = a.data.iter().map(|&v| v as i32).sum::<i32>();
-        let b_sum = b.data.iter().map(|&v| v as i32).sum::<i32>();
-        // -np.sum(x)
-        b_sum.cmp(&a_sum)
-    });
-
-    Some(valid_phases[0].as_bytes().to_vec())
-}
