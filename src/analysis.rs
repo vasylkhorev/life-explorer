@@ -29,6 +29,7 @@ pub fn analyze_pattern(
     let mut grid1 = base_grid.clone();
     let mut grid2 = Grid2D::new(grid1.width, grid1.height);
     let mut history: VecDeque<Vec<u8>> = VecDeque::with_capacity(60);
+    let mut prev_bounding_box: Option<(usize, usize)> = None; // (y_min, x_min)
 
     // Warmup
     for _ in 0..30 {
@@ -57,11 +58,11 @@ pub fn analyze_pattern(
         if grid1.hit_edge() {
             let components = get_components(&grid1);
             for comp in components {
-                if comp.size > 50 {
+                if comp.size > 100 {
                     continue; // Too big to be a nice glider, probably explosion
                 }
                 
-                if let Some(g_crop) = verify_glider(&comp.crop, rule, 48, 400) {
+                if let Some(g_crop) = verify_glider(&comp.crop, rule, 64, 500) {
                     let canon = canonical_orientation(&g_crop);
                     return PatternResult::Glider(canon.as_bytes().to_vec(), canon);
                 }
@@ -76,6 +77,9 @@ pub fn analyze_pattern(
         
         let crop_bytes = crop.as_bytes().to_vec();
 
+        // Track bounding box position to detect translation
+        let bb = grid1.bounding_box();
+
         let mut found_idx: i32 = -1;
         for (i, h_bytes) in history.iter().enumerate() {
             if crop_bytes == *h_bytes {
@@ -87,6 +91,32 @@ pub fn analyze_pattern(
         if found_idx != -1 {
             let period = history.len() - found_idx as usize;
             
+            // Check if the pattern is translating by comparing bounding box position.
+            // If it moved, this is likely a glider/ship, not an oscillator.
+            if let Some((bb_y_min, _bb_y_max, bb_x_min, _bb_x_max)) = bb {
+                if let Some(prev_bb) = prev_bounding_box {
+                    let dy = (bb_y_min as isize - prev_bb.0 as isize).unsigned_abs();
+                    let dx = (bb_x_min as isize - prev_bb.1 as isize).unsigned_abs();
+                    
+                    if dy > 0 || dx > 0 {
+                        // Pattern is translating! Try to verify as a glider.
+                        let components = get_components(&grid1);
+                        for comp in components {
+                            if comp.size > 100 {
+                                continue;
+                            }
+                            if let Some(g_crop) = verify_glider(&comp.crop, rule, 64, 500) {
+                                let canon = canonical_orientation(&g_crop);
+                                return PatternResult::Glider(canon.as_bytes().to_vec(), canon);
+                            }
+                        }
+                        // Translation detected but verify_glider failed — treat as chaos
+                        // rather than misclassifying as oscillator
+                        return PatternResult::Chaos;
+                    }
+                }
+            }
+
             // Re-simulate to capture ALL phases
             let mut grid_stable = grid1.clone();
             let mut grid_stable_next = Grid2D::new(grid_stable.width, grid_stable.height);
@@ -112,10 +142,27 @@ pub fn analyze_pattern(
             return PatternResult::Oscillator { period, signature: canon.as_bytes().to_vec(), best_phase: canon };
         }
 
+        // Track bounding box for next iteration
+        if let Some((bb_y_min, _bb_y_max, bb_x_min, _bb_x_max)) = bb {
+            prev_bounding_box = Some((bb_y_min, bb_x_min));
+        }
+
         if history.len() == 60 {
             history.pop_front();
         }
         history.push_back(crop_bytes);
+    }
+    // Pattern survived the full loop without oscillator match or edge-hit.
+    // Try verifying the remaining pattern as a slow-moving glider/ship.
+    let components = get_components(&grid1);
+    for comp in components {
+        if comp.size > 100 {
+            continue;
+        }
+        if let Some(g_crop) = verify_glider(&comp.crop, rule, 64, 500) {
+            let canon = canonical_orientation(&g_crop);
+            return PatternResult::Glider(canon.as_bytes().to_vec(), canon);
+        }
     }
 
     PatternResult::Chaos

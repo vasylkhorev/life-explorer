@@ -1,7 +1,10 @@
+use std::collections::HashMap;
 use crate::grid::Grid2D;
 use crate::rule::HalfLifeRule;
-use crate::components::get_components;
 
+/// Verify that a cropped pattern is a true glider/ship by proving it has
+/// periodic translation: it returns to the same shape after P steps,
+/// but displaced by a non-zero (dx, dy).
 pub fn verify_glider(
     crop: &Grid2D,
     rule: &HalfLifeRule,
@@ -9,6 +12,9 @@ pub fn verify_glider(
     max_steps: usize,
 ) -> Option<Grid2D> {
     if crop.height >= universe_size || crop.width >= universe_size {
+        return None;
+    }
+    if crop.width == 0 || crop.height == 0 {
         return None;
     }
 
@@ -22,12 +28,20 @@ pub fn verify_glider(
         }
     }
 
-    let (initial_y, initial_x) = match get_center_of_mass(&grid) {
-        Some(pos) => pos,
-        None => return None,
-    };
+    // Track canonical crop → (step, bb_y_min, bb_x_min)
+    // Same shape at different position = glider
+    let mut history: HashMap<Vec<u8>, (usize, usize, usize)> = HashMap::new();
 
-    for _step in 1..max_steps {
+    // Record initial state
+    if let Some((y_min, _y_max, x_min, _x_max)) = grid.bounding_box() {
+        if let Some(crop_now) = get_tight_crop(&grid) {
+            let canon = canonical_orientation(&crop_now);
+            let sig = canon.as_bytes().to_vec();
+            history.insert(sig, (0, y_min, x_min));
+        }
+    }
+
+    for step in 1..=max_steps {
         let mut next_grid = Grid2D::new(universe_size, universe_size);
         rule.step_in_place(&grid, &mut next_grid);
         grid = next_grid;
@@ -36,32 +50,93 @@ pub fn verify_glider(
             return None;
         }
 
+        if grid.alive_count() > 200 {
+            return None;
+        }
+
         if grid.hit_edge() {
-            let (final_y, final_x) = match get_center_of_mass(&grid) {
-                Some(pos) => pos,
-                None => return None,
-            };
+            return None;
+        }
 
-            let dy = final_y - initial_y;
-            let dx = final_x - initial_x;
-            let dist = (dy * dy + dx * dx).sqrt();
+        let (y_min, _y_max, x_min, _x_max) = match grid.bounding_box() {
+            Some(bb) => bb,
+            None => return None,
+        };
 
-            if dist > 2.0 {
-                let comps = get_components(&grid);
-                let main_comps: Vec<_> = comps.into_iter().filter(|c| c.size > 2).collect();
+        let crop_now = match get_tight_crop(&grid) {
+            Some(c) => c,
+            None => continue,
+        };
 
-                if main_comps.len() == 1 {
-                    let main_comp = &main_comps[0];
-                    if main_comp.crop.height < 16 && main_comp.crop.width < 16 {
-                        return Some(main_comp.crop.clone());
-                    }
+        let canon = canonical_orientation(&crop_now);
+        let sig = canon.as_bytes().to_vec();
+
+        if let Some(&(prev_step, prev_y, prev_x)) = history.get(&sig) {
+            let period = step - prev_step;
+
+            // Position changed = translating = glider!
+            if (y_min != prev_y || x_min != prev_x) && period <= 60 {
+                // Verify: run one more period, confirm position still changes
+                let dy = y_min as isize - prev_y as isize;
+                let dx = x_min as isize - prev_x as isize;
+                if verify_still_moving(&grid, rule, universe_size, period, dy, dx) {
+                    return Some(canon);
                 }
             }
-            return None;
+
+            // Same position = oscillator, not glider. Keep searching.
+        } else {
+            history.insert(sig, (step, y_min, x_min));
         }
     }
 
     None
+}
+
+/// Run one more period and confirm the bounding box shifts by ~(dy, dx).
+fn verify_still_moving(
+    grid: &Grid2D,
+    rule: &HalfLifeRule,
+    universe_size: usize,
+    period: usize,
+    expected_dy: isize,
+    expected_dx: isize,
+) -> bool {
+    let start_bb = match grid.bounding_box() {
+        Some((y_min, _, x_min, _)) => (y_min, x_min),
+        None => return false,
+    };
+
+    let mut g = grid.clone();
+    for _ in 0..period {
+        let mut next = Grid2D::new(universe_size, universe_size);
+        rule.step_in_place(&g, &mut next);
+        g = next;
+
+        if g.is_empty() || g.alive_count() > 200 || g.hit_edge() {
+            return false;
+        }
+    }
+
+    let end_bb = match g.bounding_box() {
+        Some((y_min, _, x_min, _)) => (y_min, x_min),
+        None => return false,
+    };
+
+    let actual_dy = end_bb.0 as isize - start_bb.0 as isize;
+    let actual_dx = end_bb.1 as isize - start_bb.1 as isize;
+
+    // Must move in the same direction
+    actual_dy == expected_dy && actual_dx == expected_dx
+}
+
+/// Get the tight bounding-box crop of a grid (all alive cells).
+fn get_tight_crop(grid: &Grid2D) -> Option<Grid2D> {
+    if let Some((y_min, y_max, x_min, x_max)) = grid.bounding_box() {
+        Some(grid.crop(y_min, y_max, x_min, x_max))
+    } else {
+        None
+    }
 }
 
 fn get_center_of_mass(grid: &Grid2D) -> Option<(f64, f64)> {
@@ -170,5 +245,3 @@ pub fn canonical_orientation(grid: &Grid2D) -> Grid2D {
 
     variants[0].clone()
 }
-
-

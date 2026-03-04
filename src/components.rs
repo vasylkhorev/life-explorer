@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use crate::grid::Grid2D;
 
+#[derive(Clone)]
 pub struct Component {
     pub crop: Grid2D,
     pub bbox: (usize, usize, usize, usize), // (y_min, y_max, x_min, x_max)

@@ -96,7 +96,7 @@ pub fn extract_patterns(rule: HalfLifeRule, num_patterns: usize, output_dir: &st
         let name = format!("Glider {}", i + 1);
         let desc = format!("Stable glider found");
         let rle_body = g.to_rle();
-        let full_rle = format!("x = {}, y = {}, rule = FuzzyLife/3\n{}", g.width, g.height, rle_body);
+        let full_rle = format!("x = {}, y = {}, rule = FuzzyLife/3\\n{}", g.width, g.height, rle_body);
         output_str.push_str(&format!("    '{}': {{\n", name));
         output_str.push_str(&format!("      rle: '{}',\n", full_rle));
         output_str.push_str(&format!("      description: '{}',\n", desc));
@@ -116,7 +116,7 @@ pub fn extract_patterns(rule: HalfLifeRule, num_patterns: usize, output_dir: &st
 
             let desc = format!("Period {} oscillator", p);
             let rle_body = o.to_rle();
-            let full_rle = format!("x = {}, y = {}, rule = FuzzyLife/3\n{}", o.width, o.height, rle_body);
+            let full_rle = format!("x = {}, y = {}, rule = FuzzyLife/3\\n{}", o.width, o.height, rle_body);
             output_str.push_str(&format!("    '{}': {{\n", name));
             output_str.push_str(&format!("      rle: '{}',\n", full_rle));
             output_str.push_str(&format!("      description: '{}',\n", desc));
