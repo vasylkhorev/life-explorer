@@ -85,7 +85,7 @@ pub fn explore_2d(rules: Vec<HalfLifeRule>, num_patterns: usize, _threads: usize
                     }
                 }
 
-                match analyze_pattern(&grid, &rule, 120) {
+                match analyze_pattern(&grid, &rule, 120, 60) {
                     PatternResult::Dead => dead += 1,
                     PatternResult::Explode => explode += 1,
                     PatternResult::Chaos => chaos += 1,

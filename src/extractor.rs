@@ -54,7 +54,7 @@ pub fn extract_patterns(rule: HalfLifeRule, num_patterns: usize, output_dir: &st
                 }
             }
 
-            match analyze_pattern(&grid, &rule, 120) {
+            match analyze_pattern(&grid, &rule, 120, 60) {
                 PatternResult::Glider(sig, crop) => Some((sig, 0, crop)), // period 0 for gliders
                 PatternResult::Oscillator { period, signature, best_phase } => Some((signature, period, best_phase)),
                 _ => None,

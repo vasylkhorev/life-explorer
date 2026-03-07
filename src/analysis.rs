@@ -25,10 +25,11 @@ pub fn analyze_pattern(
     base_grid: &Grid2D,
     rule: &HalfLifeRule,
     max_steps: usize,
+    max_history: usize,
 ) -> PatternResult {
     let mut grid1 = base_grid.clone();
     let mut grid2 = Grid2D::new(grid1.width, grid1.height);
-    let mut history: VecDeque<Vec<u8>> = VecDeque::with_capacity(60);
+    let mut history: VecDeque<Vec<u8>> = VecDeque::with_capacity(max_history);
     let mut prev_bounding_box: Option<(usize, usize)> = None; // (y_min, x_min)
 
     // Warmup
@@ -147,7 +148,7 @@ pub fn analyze_pattern(
             prev_bounding_box = Some((bb_y_min, bb_x_min));
         }
 
-        if history.len() == 60 {
+        if history.len() >= max_history {
             history.pop_front();
         }
         history.push_back(crop_bytes);

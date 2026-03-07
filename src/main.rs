@@ -7,6 +7,7 @@ pub mod explorer_2d;
 pub mod explorer_1d;
 pub mod extractor;
 pub mod output;
+pub mod massive;
 
 use clap::{Parser, Subcommand};
 use crate::rule::HalfLifeRule;
@@ -76,6 +77,26 @@ enum Commands {
         
         #[arg(long)]
         html: String,
+    },
+    
+    /// Run a massive search geared towards finding rare oscillators and methuselahs
+    #[command(name = "massive-search")]
+    MassiveSearch {
+        /// The rule to explore (defaults to the mathematically best rule: B4.5-5.5/S0-3.5)
+        #[arg(long, default_value = "B4.5-5.5/S0-3.5")]
+        rule: String,
+        
+        /// Number of patterns to test
+        #[arg(long, default_value_t = 100000)]
+        patterns: usize,
+        
+        /// Max steps to run simulation
+        #[arg(long, default_value_t = 50000)]
+        max_steps: usize,
+        
+        /// Max period to track in history
+        #[arg(long, default_value_t = 10000)]
+        max_period: usize,
     }
 }
 
@@ -229,6 +250,11 @@ fn main() {
         Commands::CsvToHtml { csv, html } => {
             output::generate_html_table(&csv, &html).unwrap();
             println!("HTML generated at {}", html);
+        },
+        
+        Commands::MassiveSearch { rule, patterns, max_steps, max_period } => {
+            let parsed_rule = parse_rule_str(&rule);
+            massive::run_massive_search(parsed_rule, patterns, max_period, max_steps, cli.threads);
         }
     }
 }
