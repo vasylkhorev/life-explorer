@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 use rayon::prelude::*;
 use rand::Rng;
-use indicatif::ParallelProgressIterator;
-use indicatif::ProgressBar;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::io::{Write, BufWriter};
 use std::fs::OpenOptions;
 use std::sync::{Mutex, Arc};
@@ -15,7 +14,8 @@ pub fn run_massive_search(rule: HalfLifeRule, num_patterns: usize, max_period: u
     println!("Running Massive Search for rule: {}", rule);
     println!("Patterns: {}, Max Steps: {}, Max Period: {}", num_patterns, max_steps, max_period);
 
-    let pb = ProgressBar::new(num_patterns as u64);
+    let progress_counter = Arc::new(AtomicUsize::new(0));
+    let print_interval = (num_patterns / 20).max(1); // Print ~20 times total (every 5%)
     
     let file = OpenOptions::new()
         .create(true)
@@ -32,8 +32,13 @@ pub fn run_massive_search(rule: HalfLifeRule, num_patterns: usize, max_period: u
     let best_oscillators = Arc::new(Mutex::new(std::collections::HashMap::new()));
 
     (0..num_patterns).into_par_iter()
-        .progress_with(pb)
         .for_each(|_| {
+            let current = progress_counter.fetch_add(1, Ordering::Relaxed) + 1;
+            if current % print_interval == 0 || current == num_patterns {
+                let percent = (current as f64 / num_patterns as f64) * 100.0;
+                println!("Progress: {} / {} patterns ({:.1}%)", current, num_patterns, percent);
+            }
+            
             let mut rng = rand::thread_rng();
             
             // Random sizes up to 20x20
