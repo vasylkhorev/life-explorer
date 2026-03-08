@@ -10,9 +10,9 @@ use crate::rule::HalfLifeRule;
 use crate::grid::Grid2D;
 use crate::analysis::{analyze_pattern, PatternResult};
 
-pub fn run_massive_search(rule: HalfLifeRule, num_patterns: usize, max_period: usize, max_steps: usize, _threads: usize) {
+pub fn run_massive_search(rule: HalfLifeRule, num_patterns: usize, max_period: usize, max_steps: usize, max_size: usize, _threads: usize) {
     println!("Running Massive Search for rule: {}", rule);
-    println!("Patterns: {}, Max Steps: {}, Max Period: {}", num_patterns, max_steps, max_period);
+    println!("Patterns: {}, Max Steps: {}, Max Period: {}, Max Size: {}x{}", num_patterns, max_steps, max_period, max_size, max_size);
 
     let progress_counter = Arc::new(AtomicUsize::new(0));
     let print_interval = (num_patterns / 20).max(1); // Print ~20 times total (every 5%)
@@ -41,8 +41,8 @@ pub fn run_massive_search(rule: HalfLifeRule, num_patterns: usize, max_period: u
             
             let mut rng = rand::thread_rng();
             
-            // Random sizes up to 20x20
-            let p_size = rng.gen_range(3..=20);
+            // Random sizes up to max_size x max_size
+            let p_size = rng.gen_range(3..=max_size);
             
             // Massive variance in density: from very sparse to very dense
             let density: f64 = rng.gen_range(0.01..0.95);

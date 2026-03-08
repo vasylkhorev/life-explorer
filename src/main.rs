@@ -97,6 +97,10 @@ enum Commands {
         /// Max period to track in history
         #[arg(long, default_value_t = 10000)]
         max_period: usize,
+        
+        /// Maximum width/height of the randomly generated initial seed pattern
+        #[arg(long, default_value_t = 20)]
+        max_size: usize,
     }
 }
 
@@ -252,9 +256,9 @@ fn main() {
             println!("HTML generated at {}", html);
         },
         
-        Commands::MassiveSearch { rule, patterns, max_steps, max_period } => {
+        Commands::MassiveSearch { rule, patterns, max_steps, max_period, max_size } => {
             let parsed_rule = parse_rule_str(&rule);
-            massive::run_massive_search(parsed_rule, patterns, max_period, max_steps, cli.threads);
+            massive::run_massive_search(parsed_rule, patterns, max_period, max_steps, max_size, cli.threads);
         }
     }
 }
